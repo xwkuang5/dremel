@@ -81,6 +81,13 @@ class RecordDecoder:
         return next(self.iterator)
 
 def dissect_record(decoder, writer, repetition_level):
+    """
+    Dissects a record into a set of columns.
+
+    Current limitations:
+    - Does not differentiate between null and missing
+    - Eagerly writes all leaves (i.e., not sparse)
+    """
     seen_fields = set()
     
     while decoder.has_next():
