@@ -12,6 +12,46 @@ class TestDremel(unittest.TestCase):
         self.assertEqual(result["a.b[*].c"], [(1, 0, 3), (2, 1, 3), (None, 0, 1)])
         self.assertEqual(result["a.d"], [(1, 0, 2), (2, 0, 2)])
 
+    def test_paper_example(self):
+        schema = ["DocId", "Links.Backward[*]", "Links.Forward[*]", "Name[*].Language[*].Code", "Name[*].Language[*].Country", "Name[*].Url"]
+        records = [
+            {
+                "DocId": 10, 
+                "Links": {
+                    "Forward": [20, 40, 60]
+                }, 
+                "Name": [
+                    {
+                        "Language": [
+                            {"Code": "en-us", "Country": "us"},
+                            {"Code": "en"}
+                        ],
+                        "Url": "http://A"
+                    },
+                    { 
+                        "Url": "http://B" 
+                    },
+                    { 
+                        "Language": [{"Code": "en-gb", "Country": "gb"}] 
+                    }
+                ]
+            },
+            {
+                "DocId": 20, 
+                "Links": {
+                    "Backward": [10, 30],
+                    "Forward": [80]
+                }, 
+                "Name": [
+                    {"Url": "http://C"}
+                ]
+            }
+        ]
+        result = shred_records(schema, records)
+        self.assertEqual(result["DocId"], [(10, 0, 1), (20, 0, 1)])
+        self.assertEqual(result["Name[*].Url"], [("http://A", 0, 2), ("http://B", 1, 2), (None, 1, 1), ("http://C", 0, 2)])
+        self.assertEqual(result["Name[*].Language[*].Code"], [("en-us", 0, 3), ("en", 2, 3), (None, 1, 1), ("en-gb", 1, 3), (None, 0, 1)])
+
     def test_missing_root(self):
         schema = ["a.b"]
         records = [{}]
