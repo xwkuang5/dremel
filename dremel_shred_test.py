@@ -109,6 +109,47 @@ class TestDremelShred(unittest.TestCase):
         self.assertEqual(result["doc.links[*].forward"], [(20, 0, 3), (40, 1, 3), (None, 0, 2)])
         self.assertEqual(result["doc.links[*].backward"], [(10, 0, 3), (None, 1, 2), (30, 0, 3)])
 
+    def test_shred_repeated_leaf_mixed(self):
+        schema = ["data.values[*]", "data.meta"]
+        records = [
+            {"data": {"values": [1, 2], "meta": "m1"}},
+            {"data": {"values": [], "meta": "m2"}},
+            {"data": {}},
+            {}
+        ]
+        # data.values[*]: r=1, d=2
+        # data.meta: r=0, d=2
+        
+        # Record 1: values=[1, 2], meta="m1"
+        # values: (1, 0, 2), (2, 1, 2)
+        # meta: ("m1", 0, 2)
+        
+        # Record 2: values=[], meta="m2"
+        # values: (None, 0, 1)  <- data present(1), values missing(1)
+        # meta: ("m2", 0, 2)
+        
+        # Record 3: data present, empty
+        # values: (None, 0, 1)
+        # meta: (None, 0, 1)
+        
+        # Record 4: missing root
+        # values: (None, 0, 0)
+        # meta: (None, 0, 0)
+        
+        result = shred_records(schema, records)
+        self.assertEqual(result["data.values[*]"], [
+            (1, 0, 2), (2, 1, 2), 
+            (None, 0, 1), 
+            (None, 0, 1), 
+            (None, 0, 0)
+        ])
+        self.assertEqual(result["data.meta"], [
+            ("m1", 0, 2), 
+            ("m2", 0, 2), 
+            (None, 0, 1), 
+            (None, 0, 0)
+        ])
+
 class TestParseSchema(unittest.TestCase):
     def test_simple_schema(self):
         schema = ["a", "b"]
@@ -138,6 +179,17 @@ class TestParseSchema(unittest.TestCase):
         expected = mk_desc("$", 0, 0, children=[
             mk_desc("a", 1, 1, is_repeated=True, children=[
                 mk_desc("b", 1, 2)
+            ])
+        ])
+        self.assertEqual(root, expected)
+
+    def test_repeated_leaf_schema(self):
+        schema = ["a.b[*]"]
+        root = parse_schema(schema)
+        
+        expected = mk_desc("$", 0, 0, children=[
+            mk_desc("a", 0, 1, children=[
+                mk_desc("b", 1, 2, is_repeated=True)
             ])
         ])
         self.assertEqual(root, expected)

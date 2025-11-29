@@ -35,7 +35,6 @@ class ColumnDescriptor:
                 self.max_repetition_level == other.max_repetition_level and
                 self.max_definition_level == other.max_definition_level and
                 self.is_repeated == other.is_repeated and
-                self.parent == other.parent and
                 self.children == other.children)
 
     def __repr__(self):
