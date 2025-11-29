@@ -1,5 +1,14 @@
 import unittest
-from dremel_shred import shred_records
+from dremel_shred import shred_records, parse_schema, ColumnDescriptor
+
+def mk_desc(path, r, d, is_repeated=False, children=None):
+    desc = ColumnDescriptor(path, parent=None, max_repetition_level=r, max_definition_level=d)
+    desc.is_repeated = is_repeated
+    if children:
+        for child in children:
+            desc.children[child.path] = child
+            child.parent = desc
+    return desc
 
 class TestDremelShred(unittest.TestCase):
     def test_basic_example(self):
@@ -99,6 +108,59 @@ class TestDremelShred(unittest.TestCase):
         result = shred_records(schema, records)
         self.assertEqual(result["doc.links[*].forward"], [(20, 0, 3), (40, 1, 3), (None, 0, 2)])
         self.assertEqual(result["doc.links[*].backward"], [(10, 0, 3), (None, 1, 2), (30, 0, 3)])
+
+class TestParseSchema(unittest.TestCase):
+    def test_simple_schema(self):
+        schema = ["a", "b"]
+        root = parse_schema(schema)
+        
+        expected = mk_desc("$", 0, 0, children=[
+            mk_desc("a", 0, 1),
+            mk_desc("b", 0, 1)
+        ])
+        self.assertEqual(root, expected)
+
+    def test_nested_schema(self):
+        schema = ["a.b"]
+        root = parse_schema(schema)
+        
+        expected = mk_desc("$", 0, 0, children=[
+            mk_desc("a", 0, 1, children=[
+                mk_desc("b", 0, 2)
+            ])
+        ])
+        self.assertEqual(root, expected)
+
+    def test_repeated_schema(self):
+        schema = ["a[*].b"]
+        root = parse_schema(schema)
+        
+        expected = mk_desc("$", 0, 0, children=[
+            mk_desc("a", 1, 1, is_repeated=True, children=[
+                mk_desc("b", 1, 2)
+            ])
+        ])
+        self.assertEqual(root, expected)
+
+    def test_paper_schema(self):
+        schema = ["DocId", "Links.Backward[*]", "Links.Forward[*]", "Name[*].Language[*].Code", "Name[*].Language[*].Country", "Name[*].Url"]
+        root = parse_schema(schema)
+        
+        expected = mk_desc("$", 0, 0, children=[
+            mk_desc("DocId", 0, 1),
+            mk_desc("Links", 0, 1, children=[
+                mk_desc("Backward", 1, 2, is_repeated=True),
+                mk_desc("Forward", 1, 2, is_repeated=True)
+            ]),
+            mk_desc("Name", 1, 1, is_repeated=True, children=[
+                mk_desc("Language", 2, 2, is_repeated=True, children=[
+                    mk_desc("Code", 2, 3),
+                    mk_desc("Country", 2, 3)
+                ]),
+                mk_desc("Url", 1, 2)
+            ])
+        ])
+        self.assertEqual(root, expected)
 
 if __name__ == "__main__":
     unittest.main()

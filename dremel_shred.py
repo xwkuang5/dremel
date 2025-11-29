@@ -1,33 +1,23 @@
 import collections
 
-class FieldWriter:
-    def __init__(self, name, parent=None, is_repeated=False):
-        self.name = name
+class ColumnDescriptor:
+    def __init__(self, path, parent=None, max_repetition_level=0, max_definition_level=0):
+        self.path = path
         self.parent = parent
-        self.is_repeated = is_repeated
+        self.max_repetition_level = max_repetition_level
+        self.max_definition_level = max_definition_level
         self.children = collections.OrderedDict()
-        self.data = [] # List of (value, r, d)
-        
-        # Computed levels
-        self.max_repetition_level = 0
-        self.max_definition_level = 0
-        
-    def add_child(self, name, is_repeated=False):
-        if name not in self.children:
-            self.children[name] = FieldWriter(name, self, is_repeated)
-        return self.children[name]
-        
-    def get_child(self, name):
-        return self.children.get(name)
-        
-    def is_leaf(self):
-        return len(self.children) == 0
-        
-    def write(self, value, r, d):
-        self.data.append((value, r, d))
+        self.is_repeated = False
+
+    def add_child(self, path, is_repeated=False):
+        if path not in self.children:
+            child = ColumnDescriptor(path, parent=self)
+            child.is_repeated = is_repeated
+            self.children[path] = child
+        return self.children[path]
 
     def compute_levels(self, current_rep_level=0, current_def_level=0):
-        new_def_level = current_def_level + (1 if self.parent else 0)
+        new_def_level = current_def_level + (1 if self.parent is not None else 0)
         new_rep_level = current_rep_level
         if self.is_repeated:
             new_rep_level += 1
@@ -37,6 +27,57 @@ class FieldWriter:
         
         for child in self.children.values():
             child.compute_levels(new_rep_level, new_def_level)
+
+    def __eq__(self, other):
+        if not isinstance(other, ColumnDescriptor):
+            return False
+        return (self.path == other.path and
+                self.max_repetition_level == other.max_repetition_level and
+                self.max_definition_level == other.max_definition_level and
+                self.is_repeated == other.is_repeated and
+                self.parent == other.parent and
+                self.children == other.children)
+
+    def __repr__(self):
+        return (f"ColumnDescriptor(path='{self.path}', "
+                f"r={self.max_repetition_level}, "
+                f"d={self.max_definition_level}, "
+                f"is_repeated={self.is_repeated}, "
+                f"children={list(self.children.values())})")
+
+class FieldWriter:
+    def __init__(self, descriptor):
+        self.descriptor = descriptor
+        self.children = collections.OrderedDict()
+        self.data = [] # List of (value, r, d)
+        
+        for name, child_desc in descriptor.children.items():
+            self.children[name] = FieldWriter(child_desc)
+            
+    @property
+    def name(self):
+        return self.descriptor.path
+        
+    @property
+    def is_repeated(self):
+        return self.descriptor.is_repeated
+        
+    @property
+    def max_repetition_level(self):
+        return self.descriptor.max_repetition_level
+        
+    @property
+    def max_definition_level(self):
+        return self.descriptor.max_definition_level
+        
+    def get_child(self, name):
+        return self.children.get(name)
+        
+    def is_leaf(self):
+        return len(self.children) == 0
+        
+    def write(self, value, r, d):
+        self.data.append((value, r, d))
 
 class RecordDecoder:
     def __init__(self, record, definition_level):
@@ -118,7 +159,7 @@ def dissect_record(decoder, writer, repetition_level):
                 dissect_record(new_dec, child_writer, repetition_level)
 
 def parse_schema(schema_paths):
-    root = FieldWriter("__root__")
+    root = ColumnDescriptor("$")
     for path in schema_paths:
         parts = path.split('.')
         current = root
@@ -133,7 +174,8 @@ def parse_schema(schema_paths):
     return root
 
 def shred_records(schema_paths, records):
-    root = parse_schema(schema_paths)
+    root_descriptor = parse_schema(schema_paths)
+    root = FieldWriter(root_descriptor)
     for record in records:
         decoder = RecordDecoder(record, definition_level=0)
         dissect_record(decoder, root, repetition_level=0)
@@ -146,7 +188,7 @@ def shred_records(schema_paths, records):
         full_path = f"{path_prefix}.{path}" if path_prefix else path
         
         if node.is_leaf():
-            clean_path = full_path.replace("__root__.", "")
+            clean_path = full_path.replace("$.", "")
             output[clean_path] = node.data
         
         for child in node.children.values():
