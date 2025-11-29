@@ -1,7 +1,7 @@
 import unittest
-from dremel import shred_records
+from dremel_shred import shred_records
 
-class TestDremel(unittest.TestCase):
+class TestDremelShred(unittest.TestCase):
     def test_basic_example(self):
         schema = ["a.b[*].c", "a.d"]
         records = [

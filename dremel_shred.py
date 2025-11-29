@@ -85,7 +85,7 @@ def dissect_record(decoder, writer, repetition_level):
     Dissects a record into a set of columns.
 
     Current limitations:
-    - Does not differentiate between null and missing
+    - Does not differentiate between null and missing, i.e., can not differentiate an empty sub-record from one which has all its sub-fields set to null
     - Eagerly writes all leaves (i.e., not sparse)
     """
     seen_fields = set()
