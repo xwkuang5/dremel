@@ -119,6 +119,20 @@ class TestDremelShred(unittest.TestCase):
         self.assertEqual(result["doc.links[*].backward"],
                          [(10, 0, 3), (None, 1, 2), (30, 0, 3)])
 
+    def test_shred_repeated_leaf_topLevel(self):
+        schema = ["values[*]"]
+        records = [
+            {"values": [1, 2]},
+            {"values": []},
+            {}
+        ]
+        result = shred_records(schema, records)
+        self.assertEqual(result["values[*]"], [
+            (1, 0, 1), (2, 1, 1),
+            (None, 0, 0),
+            (None, 0, 0)
+        ])
+
     def test_shred_repeated_leaf_mixed(self):
         schema = ["data.values[*]", "data.meta"]
         records = [
