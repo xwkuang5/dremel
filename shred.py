@@ -53,6 +53,7 @@ class RecordDecoder:
             # If value is list, yield (key, item) for each item
             def generator():
                 for k, v in self.record.items():
+                    # This allow treating a leaf repeated field `a[*]` as if it is a list of objects with a single field `a`
                     if isinstance(v, list):
                         for item in v:
                             yield (k, item)
