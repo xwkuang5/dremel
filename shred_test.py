@@ -1,21 +1,23 @@
 import unittest
-from dremel_shred import shred_records, parse_schema, ColumnDescriptor
+from shred import shred_records
+from shred import shred_records
+from test_utils import mk_desc
 
 
-def mk_desc(path, r, d, is_repeated=False, children=None):
-    desc = ColumnDescriptor(
-        path, parent=None, max_repetition_level=r, max_definition_level=d)
-    desc.is_repeated = is_repeated
-    if children:
-        for child in children:
-            desc.children[child.path] = child
-            child.parent = desc
-    return desc
+
 
 
 class TestDremelShred(unittest.TestCase):
     def test_basic_example(self):
-        schema = ["a.b[*].c", "a.d"]
+        # schema = ["a.b[*].c", "a.d"]
+        schema = mk_desc("$", 0, 0, children=[
+            mk_desc("a", 0, 1, children=[
+                mk_desc("b", 1, 2, is_repeated=True, children=[
+                    mk_desc("c", 1, 3)
+                ]),
+                mk_desc("d", 0, 2)
+            ])
+        ])
         records = [
             {"a": {"b": [{"c": 1}, {"c": 2}], "d": 1}},
             {"a": {"d": 2}}
@@ -26,8 +28,22 @@ class TestDremelShred(unittest.TestCase):
         self.assertEqual(result["a.d"], [(1, 0, 2), (2, 0, 2)])
 
     def test_paper_example(self):
-        schema = ["DocId", "Links.Backward[*]", "Links.Forward[*]",
-                  "Name[*].Language[*].Code", "Name[*].Language[*].Country", "Name[*].Url"]
+        # schema = ["DocId", "Links.Backward[*]", "Links.Forward[*]",
+        #           "Name[*].Language[*].Code", "Name[*].Language[*].Country", "Name[*].Url"]
+        schema = mk_desc("$", 0, 0, children=[
+            mk_desc("DocId", 0, 1),
+            mk_desc("Links", 0, 1, children=[
+                mk_desc("Backward", 1, 2, is_repeated=True),
+                mk_desc("Forward", 1, 2, is_repeated=True)
+            ]),
+            mk_desc("Name", 1, 1, is_repeated=True, children=[
+                mk_desc("Language", 2, 2, is_repeated=True, children=[
+                    mk_desc("Code", 2, 3),
+                    mk_desc("Country", 2, 3)
+                ]),
+                mk_desc("Url", 1, 2)
+            ])
+        ])
         records = [
             {
                 "DocId": 10,
@@ -69,14 +85,24 @@ class TestDremelShred(unittest.TestCase):
                          ("en", 2, 3), (None, 1, 1), ("en-gb", 1, 3), (None, 0, 1)])
 
     def test_missing_root(self):
-        schema = ["a.b"]
+        # schema = ["a.b"]
+        schema = mk_desc("$", 0, 0, children=[
+            mk_desc("a", 0, 1, children=[
+                mk_desc("b", 0, 2)
+            ])
+        ])
         records = [{}]
         result = shred_records(schema, records)
         # a missing (d=0)
         self.assertEqual(result["a.b"], [(None, 0, 0)])
 
     def test_missing_nested(self):
-        schema = ["a.b"]
+        # schema = ["a.b"]
+        schema = mk_desc("$", 0, 0, children=[
+            mk_desc("a", 0, 1, children=[
+                mk_desc("b", 0, 2)
+            ])
+        ])
         records = [{"a": {}}]
         # a present (d=1), b missing (d=1)
         result = shred_records(schema, records)
@@ -84,13 +110,27 @@ class TestDremelShred(unittest.TestCase):
 
     def test_empty_list(self):
         # If b is empty list, we treat it as missing b (d=1)
-        schema = ["a.b[*].c"]
+        # schema = ["a.b[*].c"]
+        schema = mk_desc("$", 0, 0, children=[
+            mk_desc("a", 0, 1, children=[
+                mk_desc("b", 1, 2, is_repeated=True, children=[
+                    mk_desc("c", 1, 3)
+                ])
+            ])
+        ])
         records = [{"a": {"b": []}}]
         result = shred_records(schema, records)
         self.assertEqual(result["a.b[*].c"], [(None, 0, 1)])
 
     def test_list_with_missing_field(self):
-        schema = ["a.b[*].c"]
+        # schema = ["a.b[*].c"]
+        schema = mk_desc("$", 0, 0, children=[
+            mk_desc("a", 0, 1, children=[
+                mk_desc("b", 1, 2, is_repeated=True, children=[
+                    mk_desc("c", 1, 3)
+                ])
+            ])
+        ])
         records = [{"a": {"b": [{"c": 1}, {}]}}]
         # Item 1: c=1, d=3
         # Item 2: c missing. a(1), b(2) present. d=2.
@@ -98,7 +138,15 @@ class TestDremelShred(unittest.TestCase):
         self.assertEqual(result["a.b[*].c"], [(1, 0, 3), (None, 1, 2)])
 
     def test_multiple_records_mixed(self):
-        schema = ["doc.links[*].forward", "doc.links[*].backward"]
+        # schema = ["doc.links[*].forward", "doc.links[*].backward"]
+        schema = mk_desc("$", 0, 0, children=[
+            mk_desc("doc", 0, 1, children=[
+                mk_desc("links", 1, 2, is_repeated=True, children=[
+                    mk_desc("forward", 1, 3),
+                    mk_desc("backward", 1, 3)
+                ])
+            ])
+        ])
         records = [
             {"doc": {
                 "links": [{"forward": 20, "backward": 10}, {"forward": 40}]}},
@@ -120,7 +168,10 @@ class TestDremelShred(unittest.TestCase):
                          [(10, 0, 3), (None, 1, 2), (30, 0, 3)])
 
     def test_shred_repeated_leaf_topLevel(self):
-        schema = ["values[*]"]
+        # schema = ["values[*]"]
+        schema = mk_desc("$", 0, 0, children=[
+            mk_desc("values", 1, 1, is_repeated=True)
+        ])
         records = [
             {"values": [1, 2]},
             {"values": []},
@@ -134,7 +185,13 @@ class TestDremelShred(unittest.TestCase):
         ])
 
     def test_shred_repeated_leaf_mixed(self):
-        schema = ["data.values[*]", "data.meta"]
+        # schema = ["data.values[*]", "data.meta"]
+        schema = mk_desc("$", 0, 0, children=[
+            mk_desc("data", 0, 1, children=[
+                mk_desc("values", 1, 2, is_repeated=True),
+                mk_desc("meta", 0, 2)
+            ])
+        ])
         records = [
             {"data": {"values": [1, 2], "meta": "m1"}},
             {"data": {"values": [], "meta": "m2"}},
@@ -175,70 +232,7 @@ class TestDremelShred(unittest.TestCase):
         ])
 
 
-class TestParseSchema(unittest.TestCase):
-    def test_simple_schema(self):
-        schema = ["a", "b"]
-        root = parse_schema(schema)
 
-        expected = mk_desc("$", 0, 0, children=[
-            mk_desc("a", 0, 1),
-            mk_desc("b", 0, 1)
-        ])
-        self.assertEqual(root, expected)
-
-    def test_nested_schema(self):
-        schema = ["a.b"]
-        root = parse_schema(schema)
-
-        expected = mk_desc("$", 0, 0, children=[
-            mk_desc("a", 0, 1, children=[
-                mk_desc("b", 0, 2)
-            ])
-        ])
-        self.assertEqual(root, expected)
-
-    def test_repeated_schema(self):
-        schema = ["a[*].b"]
-        root = parse_schema(schema)
-
-        expected = mk_desc("$", 0, 0, children=[
-            mk_desc("a", 1, 1, is_repeated=True, children=[
-                mk_desc("b", 1, 2)
-            ])
-        ])
-        self.assertEqual(root, expected)
-
-    def test_repeated_leaf_schema(self):
-        schema = ["a.b[*]"]
-        root = parse_schema(schema)
-
-        expected = mk_desc("$", 0, 0, children=[
-            mk_desc("a", 0, 1, children=[
-                mk_desc("b", 1, 2, is_repeated=True)
-            ])
-        ])
-        self.assertEqual(root, expected)
-
-    def test_paper_schema(self):
-        schema = ["DocId", "Links.Backward[*]", "Links.Forward[*]",
-                  "Name[*].Language[*].Code", "Name[*].Language[*].Country", "Name[*].Url"]
-        root = parse_schema(schema)
-
-        expected = mk_desc("$", 0, 0, children=[
-            mk_desc("DocId", 0, 1),
-            mk_desc("Links", 0, 1, children=[
-                mk_desc("Backward", 1, 2, is_repeated=True),
-                mk_desc("Forward", 1, 2, is_repeated=True)
-            ]),
-            mk_desc("Name", 1, 1, is_repeated=True, children=[
-                mk_desc("Language", 2, 2, is_repeated=True, children=[
-                    mk_desc("Code", 2, 3),
-                    mk_desc("Country", 2, 3)
-                ]),
-                mk_desc("Url", 1, 2)
-            ])
-        ])
-        self.assertEqual(root, expected)
 
 
 if __name__ == "__main__":
