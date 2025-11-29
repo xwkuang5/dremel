@@ -53,7 +53,8 @@ class RecordDecoder:
             # If value is list, yield (key, item) for each item
             def generator():
                 for k, v in self.record.items():
-                    # This allow treating a leaf repeated field `a[*]` as if it is a list of objects with a single field `a`
+                    # This allow treating a leaf repeated field `a[*]` as if it
+                    # is a list of objects with a single field `a`
                     if isinstance(v, list):
                         for item in v:
                             yield (k, item)
@@ -85,7 +86,9 @@ def dissect_record(decoder, writer, repetition_level):
     Dissects a record into a set of columns.
 
     Current limitations:
-    - Does not differentiate between null and missing, i.e., can not differentiate an empty sub-record from one which has all its sub-fields set to null
+    - Does not differentiate between null and missing, i.e., can not
+      differentiate an empty sub-record from one which has all its sub-fields
+      set to null
     - Eagerly writes all leaves (i.e., not sparse)
     """
     seen_fields = set()
