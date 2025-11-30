@@ -33,11 +33,20 @@ class ColumnDescriptor:
     def __eq__(self, other):
         if not isinstance(other, ColumnDescriptor):
             return False
+        # NOTE we ignore the parent pointer intentionally
         return (self.path == other.path and
                 self.max_repetition_level == other.max_repetition_level and
                 self.max_definition_level == other.max_definition_level and
                 self.is_repeated == other.is_repeated and
                 self.children == other.children)
+
+    def __hash__(self):
+        # NOTE we ignore the parent pointer intentionally
+        return hash((self.path,
+                     self.max_repetition_level,
+                     self.max_definition_level,
+                     self.is_repeated,
+                     tuple(self.children.items())))
 
     def __repr__(self):
         return (f"ColumnDescriptor(path='{self.path}', "
