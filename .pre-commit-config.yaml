@@ -4,3 +4,11 @@ repos:
     hooks:
     -   id: autopep8
         args: [--in-place, --aggressive, --aggressive]
+-   repo: local
+    hooks:
+    -   id: pytest
+        name: pytest
+        entry: ./.venv/bin/pytest
+        language: system
+        pass_filenames: false
+        types: [python]
