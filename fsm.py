@@ -4,12 +4,15 @@ from collections import defaultdict
 END = "MAGIC"
 
 
-def make_fsm(schema):
+def make_fsm(schema, selection=None):
     assert isinstance(schema, ColumnDescriptor)
     assert schema.path == "$"
 
     # Get the list of leaf descriptors
     fields = list(get_leaves(schema))
+    if selection is not None:
+        selection_set = set(selection)
+        fields = [f for f in fields if f in selection_set]
 
     fsm = defaultdict(dict)
 
