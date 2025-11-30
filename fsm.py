@@ -66,9 +66,13 @@ def get_ancestors(node):
 
 
 def common_ancestor(a, b):
-    a_ancestors = set(get_ancestors(a))
+    a_ancestors = list(get_ancestors(a))[::-1]
+    b_ancestors = list(get_ancestors(b))[::-1]
 
-    while b not in a_ancestors:
-        b = b.parent
-
-    return b
+    common_ancestor = None
+    for a_ancestor, b_ancestor in zip(a_ancestors, b_ancestors):
+        if a_ancestor == b_ancestor:
+            common_ancestor = a_ancestor
+            continue
+        break
+    return common_ancestor
