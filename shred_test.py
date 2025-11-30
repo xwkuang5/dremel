@@ -1,10 +1,18 @@
 import unittest
 from shred import shred_records
-from shred import shred_records
 from test_utils import mk_desc
 
 
 class TestDremelShred(unittest.TestCase):
+    def _get_desc(self, schema, path):
+        curr = schema
+        parts = path.split('.')
+        for part in parts:
+            if part.endswith("[*]"):
+                part = part[:-3]
+            curr = curr.children[part]
+        return curr
+
     def test_basic_example(self):
         # schema = ["a.b[*].c", "a.d"]
         schema = mk_desc("$", 0, 0, children=[
@@ -20,9 +28,10 @@ class TestDremelShred(unittest.TestCase):
             {"a": {"d": 2}}
         ]
         result = shred_records(schema, records)
-        self.assertEqual(result["a.b[*].c"],
+        self.assertEqual(result[self._get_desc(schema, "a.b[*].c")],
                          [(1, 0, 3), (2, 1, 3), (None, 0, 1)])
-        self.assertEqual(result["a.d"], [(1, 0, 2), (2, 0, 2)])
+        self.assertEqual(result[self._get_desc(schema, "a.d")],
+                         [(1, 0, 2), (2, 0, 2)])
 
     def test_paper_example(self):
         # schema = ["DocId", "Links.Backward[*]", "Links.Forward[*]",
@@ -75,11 +84,15 @@ class TestDremelShred(unittest.TestCase):
             }
         ]
         result = shred_records(schema, records)
-        self.assertEqual(result["DocId"], [(10, 0, 1), (20, 0, 1)])
-        self.assertEqual(result["Name[*].Url"], [("http://A", 0, 2),
-                         ("http://B", 1, 2), (None, 1, 1), ("http://C", 0, 2)])
-        self.assertEqual(result["Name[*].Language[*].Code"], [("en-us", 0, 3),
-                         ("en", 2, 3), (None, 1, 1), ("en-gb", 1, 3), (None, 0, 1)])
+
+        self.assertEqual(result[self._get_desc(schema, "DocId")],
+                         [(10, 0, 1), (20, 0, 1)])
+        self.assertEqual(result[self._get_desc(schema, "Name[*].Url")],
+                         [("http://A", 0, 2), ("http://B", 1, 2),
+                          (None, 1, 1), ("http://C", 0, 2)])
+        self.assertEqual(result[self._get_desc(schema, "Name[*].Language[*].Code")],
+                         [("en-us", 0, 3), ("en", 2, 3), (None, 1, 1),
+                          ("en-gb", 1, 3), (None, 0, 1)])
 
     def test_missing_root(self):
         # schema = ["a.b"]
@@ -90,8 +103,8 @@ class TestDremelShred(unittest.TestCase):
         ])
         records = [{}]
         result = shred_records(schema, records)
-        # a missing (d=0)
-        self.assertEqual(result["a.b"], [(None, 0, 0)])
+
+        self.assertEqual(result[self._get_desc(schema, "a.b")], [(None, 0, 0)])
 
     def test_missing_nested(self):
         # schema = ["a.b"]
@@ -101,13 +114,11 @@ class TestDremelShred(unittest.TestCase):
             ])
         ])
         records = [{"a": {}}]
-        # a present (d=1), b missing (d=1)
         result = shred_records(schema, records)
-        self.assertEqual(result["a.b"], [(None, 0, 1)])
+
+        self.assertEqual(result[self._get_desc(schema, "a.b")], [(None, 0, 1)])
 
     def test_empty_list(self):
-        # If b is empty list, we treat it as missing b (d=1)
-        # schema = ["a.b[*].c"]
         schema = mk_desc("$", 0, 0, children=[
             mk_desc("a", 0, 1, children=[
                 mk_desc("b", 1, 2, is_repeated=True, children=[
@@ -117,7 +128,8 @@ class TestDremelShred(unittest.TestCase):
         ])
         records = [{"a": {"b": []}}]
         result = shred_records(schema, records)
-        self.assertEqual(result["a.b[*].c"], [(None, 0, 1)])
+        self.assertEqual(result[self._get_desc(
+            schema, "a.b[*].c")], [(None, 0, 1)])
 
     def test_list_with_missing_field(self):
         # schema = ["a.b[*].c"]
@@ -129,10 +141,10 @@ class TestDremelShred(unittest.TestCase):
             ])
         ])
         records = [{"a": {"b": [{"c": 1}, {}]}}]
-        # Item 1: c=1, d=3
-        # Item 2: c missing. a(1), b(2) present. d=2.
         result = shred_records(schema, records)
-        self.assertEqual(result["a.b[*].c"], [(1, 0, 3), (None, 1, 2)])
+
+        self.assertEqual(result[self._get_desc(schema, "a.b[*].c")],
+                         [(1, 0, 3), (None, 1, 2)])
 
     def test_multiple_records_mixed(self):
         # schema = ["doc.links[*].forward", "doc.links[*].backward"]
@@ -149,19 +161,11 @@ class TestDremelShred(unittest.TestCase):
                 "links": [{"forward": 20, "backward": 10}, {"forward": 40}]}},
             {"doc": {"links": [{"backward": 30}]}}
         ]
-        # doc(1).links(2).forward(3)/backward(3)
-
-        # Record 1:
-        # Link 1: fwd=20 (d=3, r=0), back=10 (d=3, r=0)
-        # Link 2: fwd=40 (d=3, r=1), back=missing (d=2, r=1)
-
-        # Record 2:
-        # Link 1: fwd=missing (d=2, r=0), back=30 (d=3, r=0)
 
         result = shred_records(schema, records)
-        self.assertEqual(result["doc.links[*].forward"],
+        self.assertEqual(result[self._get_desc(schema, "doc.links[*].forward")],
                          [(20, 0, 3), (40, 1, 3), (None, 0, 2)])
-        self.assertEqual(result["doc.links[*].backward"],
+        self.assertEqual(result[self._get_desc(schema, "doc.links[*].backward")],
                          [(10, 0, 3), (None, 1, 2), (30, 0, 3)])
 
     def test_shred_repeated_leaf_topLevel(self):
@@ -175,7 +179,7 @@ class TestDremelShred(unittest.TestCase):
             {}
         ]
         result = shred_records(schema, records)
-        self.assertEqual(result["values[*]"], [
+        self.assertEqual(result[self._get_desc(schema, "values[*]")], [
             (1, 0, 1), (2, 1, 1),
             (None, 0, 0),
             (None, 0, 0)
@@ -195,33 +199,15 @@ class TestDremelShred(unittest.TestCase):
             {"data": {}},
             {}
         ]
-        # data.values[*]: r=1, d=2
-        # data.meta: r=0, d=2
-
-        # Record 1: values=[1, 2], meta="m1"
-        # values: (1, 0, 2), (2, 1, 2)
-        # meta: ("m1", 0, 2)
-
-        # Record 2: values=[], meta="m2"
-        # values: (None, 0, 1)  <- data present(1), values missing(1)
-        # meta: ("m2", 0, 2)
-
-        # Record 3: data present, empty
-        # values: (None, 0, 1)
-        # meta: (None, 0, 1)
-
-        # Record 4: missing root
-        # values: (None, 0, 0)
-        # meta: (None, 0, 0)
 
         result = shred_records(schema, records)
-        self.assertEqual(result["data.values[*]"], [
+        self.assertEqual(result[self._get_desc(schema, "data.values[*]")], [
             (1, 0, 2), (2, 1, 2),
             (None, 0, 1),
             (None, 0, 1),
             (None, 0, 0)
         ])
-        self.assertEqual(result["data.meta"], [
+        self.assertEqual(result[self._get_desc(schema, "data.meta")], [
             ("m1", 0, 2),
             ("m2", 0, 2),
             (None, 0, 1),

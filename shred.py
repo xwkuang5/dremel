@@ -131,20 +131,14 @@ def shred_records(root_descriptor, records):
 
     output = {}
 
-    def collect(node, path_prefix):
-        path = node.name
-        if node.is_repeated:
-            path += "[*]"
-        full_path = f"{path_prefix}.{path}" if path_prefix else path
-
+    def collect(node):
         if node.is_leaf():
-            clean_path = full_path.replace("$.", "")
-            output[clean_path] = node.data
+            output[node.descriptor] = node.data
 
         for child in node.children.values():
-            collect(child, full_path)
+            collect(child)
 
     for child in root.children.values():
-        collect(child, "")
+        collect(child)
 
     return output
