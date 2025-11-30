@@ -28,6 +28,10 @@ class TestDremelShred(unittest.TestCase):
 
         self.assertEqual(result[s.doc_id],
                          [(10, 0, 1), (20, 0, 1)])
+        self.assertEqual(result[s.links_backward],
+                         [(None, 0, 1), (10, 0, 2), (30, 1, 2)])
+        self.assertEqual(result[s.links_forward],
+                         [(20, 0, 2), (40, 1, 2), (60, 1, 2), (80, 0, 2)])
         self.assertEqual(result[s.name_url],
                          [("http://A", 0, 2), ("http://B", 1, 2),
                           (None, 1, 1), ("http://C", 0, 2)])

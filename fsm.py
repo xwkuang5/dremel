@@ -52,6 +52,12 @@ def make_fsm(schema, selection=None):
     return fsm
 
 
+def get_all_nodes(root):
+    yield root
+    for child in root.children.values():
+        yield from get_all_nodes(child)
+
+
 def get_leaves(root):
     if not root.children:
         yield root

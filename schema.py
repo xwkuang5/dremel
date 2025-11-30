@@ -15,6 +15,10 @@ class ColumnDescriptor:
         self.children = collections.OrderedDict()
         self.is_repeated = False
 
+    @property
+    def is_leaf(self):
+        return len(self.children) == 0
+
     def add_child(self, path, is_repeated=False):
         if path not in self.children:
             child = ColumnDescriptor(path, parent=self)
