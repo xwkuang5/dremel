@@ -50,8 +50,13 @@ class TestParseSchema(unittest.TestCase):
         self.assertEqual(root, expected)
 
     def test_paper_schema(self):
-        schema = ["DocId", "Links.Backward[*]", "Links.Forward[*]",
-                  "Name[*].Language[*].Code", "Name[*].Language[*].Country", "Name[*].Url"]
+        schema = [
+            "DocId",
+            "Links.Backward[*]",
+            "Links.Forward[*]",
+            "Name[*].Language[*].Code",
+            "Name[*].Language[*].Country",
+            "Name[*].Url"]
         root = parse_schema(schema)
 
         expected = mk_desc("$", 0, 0, children=[

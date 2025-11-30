@@ -4,9 +4,6 @@ from shred import shred_records
 from test_utils import mk_desc
 
 
-
-
-
 class TestDremelShred(unittest.TestCase):
     def test_basic_example(self):
         # schema = ["a.b[*].c", "a.d"]
@@ -230,9 +227,6 @@ class TestDremelShred(unittest.TestCase):
             (None, 0, 1),
             (None, 0, 0)
         ])
-
-
-
 
 
 if __name__ == "__main__":

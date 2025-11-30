@@ -13,14 +13,14 @@ class TestFSM(unittest.TestCase):
             optional int64 DocId;
             optional group Links {
                 repeated int64 Backward;
-                repeated int64 Forward; 
+                repeated int64 Forward;
             }
             repeated group Name {
                 repeated group Language {
                     optional string Code;
-                    optional string Country; 
+                    optional string Country;
                 }
-                optional string Url; 
+                optional string Url;
             }
         }
         """

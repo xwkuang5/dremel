@@ -2,7 +2,12 @@ import collections
 
 
 class ColumnDescriptor:
-    def __init__(self, path, parent=None, max_repetition_level=0, max_definition_level=0):
+    def __init__(
+            self,
+            path,
+            parent=None,
+            max_repetition_level=0,
+            max_definition_level=0):
         self.path = path
         self.parent = parent
         self.max_repetition_level = max_repetition_level

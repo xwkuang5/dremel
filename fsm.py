@@ -20,16 +20,20 @@ def make_fsm(schema):
         barrier_level = common_ancestor(
             field, barrier).max_repetition_level if barrier != END else 0
 
-        # For fields that are at the end of a repeated message, we may need to jump back to the start of the message, super-message, etc depending of the repetition level we read
+        # For fields that are at the end of a repeated message, we may need to
+        # jump back to the start of the message, super-message, etc depending
+        # of the repetition level we read
         for pre_field in reversed(fields[:index]):
-            # For levels that are at most the barrier level, we have no choice but to jump to the barrier
+            # For levels that are at most the barrier level, we have no choice
+            # but to jump to the barrier
             if pre_field.max_repetition_level <= barrier_level:
                 continue
             # Find jump point based on the common ancestor
             back_level = common_ancestor(pre_field, field).max_repetition_level
             fsm[field][back_level] = pre_field
 
-        # Jump back to self if we have not found a transition for a level above the barrier level
+        # Jump back to self if we have not found a transition for a level above
+        # the barrier level
         for level in range(barrier_level + 1, max_level + 1):
             if level not in fsm[field]:
                 fsm[field][level] = field
