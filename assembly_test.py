@@ -39,7 +39,8 @@ class TestAssembly(unittest.TestCase):
                 "Name": [
                     {"Url": "http://C"}
                 ]
-            }
+            },
+            {}
         ]
 
         shredded = shred_records(s.root, records)
@@ -82,6 +83,10 @@ class TestAssembly(unittest.TestCase):
                     {"Language": [],
                      "Url": "http://C"}
                 ]
+            },
+            {
+                "Links": {"Backward": [], "Forward": []},
+                "Name": [{"Language": []}]
             }
         ])
 
