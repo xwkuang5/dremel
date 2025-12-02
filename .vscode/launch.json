@@ -1,17 +1,6 @@
 {
   "version": "0.2.0",
   "configurations": [
-    // {
-    //   "name": "Debug test_repeated_fields_overwrite",
-    //   "type": "debugpy",
-    //   "request": "launch",
-    //   "module": "pytest",
-    //   "args": [
-    //     "assembly_test.py::TestAssembly::test_repeated_fields_overwrite",
-    //     "-s"
-    //   ],
-    //   "console": "integratedTerminal"
-    // },
     {
       "name": "Python Debugger: Current File with Arguments",
       "type": "debugpy",
