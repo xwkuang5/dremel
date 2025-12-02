@@ -90,7 +90,6 @@ class TestAssembly(unittest.TestCase):
             }
         ])
 
-    @unittest.skip("TODO")
     def test_repeated_fields_overwrite(self):
         # Regression test for a bug where repeated fields were being overwritten
         # instead of appended.
@@ -113,7 +112,12 @@ class TestAssembly(unittest.TestCase):
         shredded = shred_records(schema, records)
         assembled = assemble_records(schema, shredded)
 
-        self.assertEqual(assembled, records)
+        self.assertEqual(assembled,
+                         [{"doc": {"title": "Dremel Paper",
+                                   "links": [{"url": "http://google.com"},
+                                             {"url": "http://cs.stanford.edu"}]}},
+                             {"doc": {"title": "Another Doc",
+                                      "links": []}}])
 
 
 if __name__ == '__main__':

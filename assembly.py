@@ -1,5 +1,6 @@
 import collections
-from fsm import make_fsm, get_all_nodes, get_leaves, get_ancestors, common_ancestor, END
+from fsm import make_fsm, END
+from schema import get_all_nodes, get_leaves, get_ancestors, common_ancestor
 
 
 class ColumnReader:
@@ -114,6 +115,10 @@ class Assembler:
         # resume from
         self.repeated_buffer = None
 
+        self.descriptor_orders = {
+            desc: i for i, desc in enumerate(
+                get_all_nodes(root_descriptor))}
+
     def move_to_level(self, new_level, next_descriptor):
 
         ancestor = common_ancestor(self.current_descriptor, next_descriptor)
@@ -132,6 +137,9 @@ class Assembler:
             assembler = self.descriptor_to_assembler[self.current_descriptor]
             assembler.end(self)
             self.current_descriptor = self.current_descriptor.parent
+
+    def is_repeating(self, from_desc, to_desc):
+        return self.descriptor_orders[from_desc] >= self.descriptor_orders[to_desc]
 
 
 def _assemble_record(
@@ -160,7 +168,14 @@ def _assemble_record(
 
         next_repetition_level = reader.peek()[1] if reader.has_next() else 0
 
-        descriptor = fsm[descriptor][next_repetition_level]
+        next_descriptor = fsm[descriptor][next_repetition_level]
+
+        if next_descriptor is not END and assembler.is_repeating(
+                descriptor, next_descriptor):
+            assembler.return_to_level(
+                descriptor.full_repetition_level(next_repetition_level))
+
+        descriptor = next_descriptor
 
     assembler.return_to_level(0)
 

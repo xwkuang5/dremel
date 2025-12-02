@@ -1,4 +1,4 @@
-from schema import ColumnDescriptor
+from schema import ColumnDescriptor, get_leaves, common_ancestor
 from collections import defaultdict
 
 END = "MAGIC"
@@ -50,35 +50,3 @@ def make_fsm(schema, selection=None):
             fsm[field][level] = barrier
 
     return fsm
-
-
-def get_all_nodes(root):
-    yield root
-    for child in root.children.values():
-        yield from get_all_nodes(child)
-
-
-def get_leaves(root):
-    if not root.children:
-        yield root
-    for child in root.children.values():
-        yield from get_leaves(child)
-
-
-def get_ancestors(node):
-    while node:
-        yield node
-        node = node.parent
-
-
-def common_ancestor(a, b):
-    a_ancestors = list(get_ancestors(a))[::-1]
-    b_ancestors = list(get_ancestors(b))[::-1]
-
-    common_ancestor = None
-    for a_ancestor, b_ancestor in zip(a_ancestors, b_ancestors):
-        if a_ancestor == b_ancestor:
-            common_ancestor = a_ancestor
-            continue
-        break
-    return common_ancestor

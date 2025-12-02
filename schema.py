@@ -1,6 +1,38 @@
 import collections
 
 
+def get_all_nodes(root):
+    yield root
+    for child in root.children.values():
+        yield from get_all_nodes(child)
+
+
+def get_leaves(root):
+    if not root.children:
+        yield root
+    for child in root.children.values():
+        yield from get_leaves(child)
+
+
+def get_ancestors(node):
+    while node:
+        yield node
+        node = node.parent
+
+
+def common_ancestor(a, b):
+    a_ancestors = list(get_ancestors(a))[::-1]
+    b_ancestors = list(get_ancestors(b))[::-1]
+
+    common_ancestor = None
+    for a_ancestor, b_ancestor in zip(a_ancestors, b_ancestors):
+        if a_ancestor == b_ancestor:
+            common_ancestor = a_ancestor
+            continue
+        break
+    return common_ancestor
+
+
 class ColumnDescriptor:
     def __init__(
             self,
@@ -18,6 +50,18 @@ class ColumnDescriptor:
     @property
     def is_leaf(self):
         return len(self.children) == 0
+
+    def full_repetition_level(self, repetition_level):
+        """
+        Returns the definition level of the field @repetition_level from root to this.
+
+        This is the level that we need to return to when finishing a record and repeating to a previous field.
+        """
+        for ancestor in reversed(list(v for v in get_ancestors(self))):
+            if ancestor.max_repetition_level == repetition_level:
+                return ancestor.max_definition_level
+        raise ValueError(f"Repetition level {
+            repetition_level} not found in ancestors of {self}")
 
     def add_child(self, path, is_repeated=False):
         if path not in self.children:
