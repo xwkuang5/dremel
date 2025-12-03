@@ -1,7 +1,7 @@
 import abc
-import collections
-from fsm import make_fsm, END
-from schema import get_all_nodes, get_leaves, get_ancestors, common_ancestor
+
+from fsm import END, make_fsm
+from schema import common_ancestor, get_all_nodes, get_ancestors, get_leaves
 
 
 class ColumnReader:
@@ -78,9 +78,9 @@ class JsonColumnAssembler(ColumnAssembler):
         self.is_leaf = column_descriptor.is_leaf
         self.is_repeated = column_descriptor.is_repeated
         self.is_first_in_repetition = _calculate_is_first_in_repetition(
-            column_descriptor)
-        self.is_last_in_repetition = _calculate_is_last_in_repetition(
-            column_descriptor)
+            column_descriptor
+        )
+        self.is_last_in_repetition = _calculate_is_last_in_repetition(column_descriptor)
 
         self.last_buffer = None
         self.last_repeated_buffer = None
@@ -122,9 +122,7 @@ class JsonColumnAssembler(ColumnAssembler):
             # If the buffer is empty, we know that it was created when setting
             # up scopes for NULL values. So we can remove them from the built
             # record.
-            if isinstance(
-                    assembler.buffer, dict) and len(
-                    assembler.buffer) == 0:
+            if isinstance(assembler.buffer, dict) and len(assembler.buffer) == 0:
                 assembler.repeated_buffer.pop()
             assembler.buffer = assembler.repeated_buffer
         else:
@@ -141,16 +139,15 @@ class TextColumnAssembler(ColumnAssembler):
         self.indent_width = column_descriptor.max_definition_level * 2
 
     def begin(self, assembler):
-        self.string_builder.append(
-            f"{'':>{self.indent_width}}<begin {self.full_path}>")
+        self.string_builder.append(f"{'':>{self.indent_width}}<begin {self.full_path}>")
 
     def add(self, value, assembler):
         self.string_builder.append(
-            f"{'':>{self.indent_width + 2}}{self.full_path}={value}")
+            f"{'':>{self.indent_width + 2}}{self.full_path}={value}"
+        )
 
     def end(self, assembler):
-        self.string_builder.append(
-            f"{'':>{self.indent_width}}<end {self.full_path}>")
+        self.string_builder.append(f"{'':>{self.indent_width}}<end {self.full_path}>")
 
 
 class Assembler:
@@ -165,11 +162,10 @@ class Assembler:
         self.repeated_buffer = None
 
         self.descriptor_orders = {
-            desc: i for i, desc in enumerate(
-                get_all_nodes(root_descriptor))}
+            desc: i for i, desc in enumerate(get_all_nodes(root_descriptor))
+        }
 
     def move_to_level(self, new_level, next_descriptor):
-
         ancestor = common_ancestor(self.current_descriptor, next_descriptor)
 
         self.return_to_level(ancestor.max_definition_level)
@@ -177,7 +173,9 @@ class Assembler:
         path_to_root = list(get_ancestors(next_descriptor))[::-1]
 
         while self.current_descriptor.max_definition_level < new_level:
-            self.current_descriptor = path_to_root[self.current_descriptor.max_definition_level + 1]
+            self.current_descriptor = path_to_root[
+                self.current_descriptor.max_definition_level + 1
+            ]
             assembler = self.descriptor_to_assembler[self.current_descriptor]
             assembler.begin(self)
 
@@ -192,12 +190,8 @@ class Assembler:
 
 
 def _assemble_record(
-        fsm,
-        root_descriptor,
-        descriptors,
-        descriptor_to_reader,
-        descriptor_to_assembler):
-
+    fsm, root_descriptor, descriptors, descriptor_to_reader, descriptor_to_assembler
+):
     descriptor = descriptors[0]
     assembler = Assembler(root_descriptor, descriptor_to_assembler)
 
@@ -220,9 +214,11 @@ def _assemble_record(
         next_descriptor = fsm[descriptor][next_repetition_level]
 
         if next_descriptor is not END and assembler.is_repeating(
-                descriptor, next_descriptor):
+            descriptor, next_descriptor
+        ):
             assembler.return_to_level(
-                descriptor.full_repetition_level(next_repetition_level))
+                descriptor.full_repetition_level(next_repetition_level)
+            )
 
         descriptor = next_descriptor
 
@@ -232,16 +228,17 @@ def _assemble_record(
 
 
 def assemble_records(
-        root_descriptor,
-        column_data,
-        assembler_factory=JsonColumnAssembler):
+    root_descriptor, column_data, assembler_factory=JsonColumnAssembler
+):
     """
     Assembles records from columnar data using the Dremel assembly algorithm.
 
     Args:
         root_descriptor: The root ColumnDescriptor of the schema.
-        column_data: A dictionary mapping ColumnDescriptor objects to lists of (value, r, d) tuples.
-        assembler_factory: A callable that takes a ColumnDescriptor and returns a ColumnAssembler.
+        column_data: A dictionary mapping ColumnDescriptor objects to lists of
+            (value, r, d) tuples.
+        assembler_factory: A callable that takes a ColumnDescriptor and returns
+            a ColumnAssembler.
 
     Returns:
         A list of assembled records (dicts).
@@ -252,11 +249,13 @@ def assemble_records(
 
     leaf_descriptors = list(get_leaves(root_descriptor))
 
-    descriptor_to_reader = {desc: ColumnReader(
-        desc, column_data[desc]) for desc in leaf_descriptors}
+    descriptor_to_reader = {
+        desc: ColumnReader(desc, column_data[desc]) for desc in leaf_descriptors
+    }
 
-    descriptor_to_assembler = {desc: assembler_factory(
-        desc) for desc in all_descriptors}
+    descriptor_to_assembler = {
+        desc: assembler_factory(desc) for desc in all_descriptors
+    }
 
     first_reader = descriptor_to_reader[leaf_descriptors[0]]
 
@@ -267,7 +266,8 @@ def assemble_records(
             root_descriptor,
             leaf_descriptors,
             descriptor_to_reader,
-            descriptor_to_assembler)
+            descriptor_to_assembler,
+        )
         records.append(record)
 
     return records

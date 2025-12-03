@@ -55,7 +55,7 @@ class RecordDecoder:
             self.iterator = iter([])
 
     def has_next(self):
-        if hasattr(self, '_next_item'):
+        if hasattr(self, "_next_item"):
             return True
         try:
             self._next_item = next(self.iterator)
@@ -64,7 +64,7 @@ class RecordDecoder:
             return False
 
     def next(self):
-        if hasattr(self, '_next_item'):
+        if hasattr(self, "_next_item"):
             item = self._next_item
             del self._next_item
             return item
@@ -96,7 +96,9 @@ def dissect_record(decoder, writer, repetition_level):
             if not isinstance(value, list):
                 raise ValueError(
                     f"Field '{field}' is repeated, expected list, found {
-                        type(value).__name__}: {value}")
+                        type(value).__name__
+                    }: {value}"
+                )
 
             # If the list is empty, we treat it as if the field was missing
             # (i.e. we don't add it to seen_fields, so the cleanup loop
@@ -108,23 +110,25 @@ def dissect_record(decoder, writer, repetition_level):
                 # the first item inherits the repetition level of its parent;
                 # the rest starts to repeat at the repetition level of the
                 # field
-                child_repetition_level = repetition_level if i == 0 else child_writer.max_repetition_level
+                child_repetition_level = (
+                    repetition_level if i == 0 else child_writer.max_repetition_level
+                )
 
                 if child_writer.is_leaf():
-                    child_writer.write(item, child_repetition_level,
-                                       definition_level)
+                    child_writer.write(item, child_repetition_level, definition_level)
                 else:
                     dissect_record(
-                        RecordDecoder(
-                            item,
-                            definition_level),
+                        RecordDecoder(item, definition_level),
                         child_writer,
-                        child_repetition_level)
+                        child_repetition_level,
+                    )
 
         else:
             if isinstance(value, list):
                 raise ValueError(
-                    f"Field '{field}' is not repeated, expected single value, found list: {value}")
+                    f"Field '{field}' is not repeated, expected single value, "
+                    f"found list: {value}"
+                )
 
             # If value is None, treat as missing
             if value is None:
@@ -133,26 +137,25 @@ def dissect_record(decoder, writer, repetition_level):
             if not child_writer.is_leaf() and not isinstance(value, dict):
                 raise ValueError(
                     f"Field '{field}' is a nested group, expected dict, found {
-                        type(value).__name__}: {value}")
+                        type(value).__name__
+                    }: {value}"
+                )
 
             seen_fields.add(field)
             if child_writer.is_leaf():
-                child_writer.write(value, repetition_level,
-                                   definition_level)
+                child_writer.write(value, repetition_level, definition_level)
             else:
                 dissect_record(
-                    RecordDecoder(
-                        value,
-                        definition_level),
+                    RecordDecoder(value, definition_level),
                     child_writer,
-                    repetition_level)
+                    repetition_level,
+                )
 
     # recursively write nulls at decoder.definition_level
     for field, child_writer in writer.children.items():
         if field not in seen_fields:
             if child_writer.is_leaf():
-                child_writer.write(None, repetition_level,
-                                   decoder.definition_level)
+                child_writer.write(None, repetition_level, decoder.definition_level)
             else:
                 new_dec = RecordDecoder(None, decoder.definition_level)
                 dissect_record(new_dec, child_writer, repetition_level)

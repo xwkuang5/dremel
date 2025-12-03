@@ -35,11 +35,8 @@ def common_ancestor(a, b):
 
 class ColumnDescriptor:
     def __init__(
-            self,
-            path,
-            parent=None,
-            max_repetition_level=0,
-            max_definition_level=0):
+        self, path, parent=None, max_repetition_level=0, max_definition_level=0
+    ):
         self.path = path
         self.parent = parent
         self.max_repetition_level = max_repetition_level
@@ -58,7 +55,7 @@ class ColumnDescriptor:
         while curr.parent:
             path.append(curr.path)
             curr = curr.parent
-        if curr.path != '$':
+        if curr.path != "$":
             path.append(curr.path)
         return ".".join(reversed(path))
 
@@ -66,13 +63,15 @@ class ColumnDescriptor:
         """
         Returns the definition level of the field @repetition_level from root to this.
 
-        This is the level that we need to return to when finishing a record and repeating to a previous field.
+        This is the level that we need to return to when finishing a record and
+        repeating to a previous field.
         """
         for ancestor in reversed(list(v for v in get_ancestors(self))):
             if ancestor.max_repetition_level == repetition_level:
                 return ancestor.max_definition_level
-        raise ValueError(f"Repetition level {
-            repetition_level} not found in ancestors of {self}")
+        raise ValueError(
+            f"Repetition level {repetition_level} not found in ancestors of {self}"
+        )
 
     def add_child(self, path, is_repeated=False):
         if path not in self.children:
@@ -82,8 +81,7 @@ class ColumnDescriptor:
         return self.children[path]
 
     def compute_levels(self, current_rep_level=0, current_def_level=0):
-        new_def_level = current_def_level + \
-            (1 if self.parent is not None else 0)
+        new_def_level = current_def_level + (1 if self.parent is not None else 0)
         new_rep_level = current_rep_level
         if self.is_repeated:
             new_rep_level += 1
@@ -98,32 +96,40 @@ class ColumnDescriptor:
         if not isinstance(other, ColumnDescriptor):
             return False
         # NOTE we ignore the parent pointer intentionally
-        return (self.path == other.path and
-                self.max_repetition_level == other.max_repetition_level and
-                self.max_definition_level == other.max_definition_level and
-                self.is_repeated == other.is_repeated and
-                self.children == other.children)
+        return (
+            self.path == other.path
+            and self.max_repetition_level == other.max_repetition_level
+            and self.max_definition_level == other.max_definition_level
+            and self.is_repeated == other.is_repeated
+            and self.children == other.children
+        )
 
     def __hash__(self):
         # NOTE we ignore the parent pointer intentionally
-        return hash((self.path,
-                     self.max_repetition_level,
-                     self.max_definition_level,
-                     self.is_repeated,
-                     tuple(self.children.items())))
+        return hash(
+            (
+                self.path,
+                self.max_repetition_level,
+                self.max_definition_level,
+                self.is_repeated,
+                tuple(self.children.items()),
+            )
+        )
 
     def __repr__(self):
-        return (f"ColumnDescriptor(path='{self.path}', "
-                f"r={self.max_repetition_level}, "
-                f"d={self.max_definition_level}, "
-                f"is_repeated={self.is_repeated}, "
-                f"children={list(self.children.values())})")
+        return (
+            f"ColumnDescriptor(path='{self.path}', "
+            f"r={self.max_repetition_level}, "
+            f"d={self.max_definition_level}, "
+            f"is_repeated={self.is_repeated}, "
+            f"children={list(self.children.values())})"
+        )
 
 
 def parse_schema(schema_paths):
     root = ColumnDescriptor("$")
     for path in schema_paths:
-        parts = path.split('.')
+        parts = path.split(".")
         current = root
         for part in parts:
             is_repeated = False

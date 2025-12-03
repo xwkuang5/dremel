@@ -30,13 +30,19 @@ class PaperSchema:
         self.name_url = mk_desc("Url", 1, 2)
 
         # Intermediate nodes
-        links = mk_desc("Links", 0, 1, children=[
-                        self.links_backward, self.links_forward])
+        links = mk_desc(
+            "Links", 0, 1, children=[self.links_backward, self.links_forward]
+        )
         name_language = mk_desc(
-            "Language", 2, 2, is_repeated=True, children=[
-                self.name_language_code, self.name_language_country])
-        name = mk_desc("Name", 1, 1, is_repeated=True,
-                       children=[name_language, self.name_url])
+            "Language",
+            2,
+            2,
+            is_repeated=True,
+            children=[self.name_language_code, self.name_language_country],
+        )
+        name = mk_desc(
+            "Name", 1, 1, is_repeated=True, children=[name_language, self.name_url]
+        )
 
         # Root
         self.root = mk_desc("$", 0, 0, children=[self.doc_id, links, name])
@@ -44,33 +50,22 @@ class PaperSchema:
         self.records = [
             {
                 "DocId": 10,
-                "Links": {
-                    "Forward": [20, 40, 60]
-                },
+                "Links": {"Forward": [20, 40, 60]},
                 "Name": [
                     {
                         "Language": [
                             {"Code": "en-us", "Country": "us"},
-                            {"Code": "en"}
+                            {"Code": "en"},
                         ],
-                        "Url": "http://A"
+                        "Url": "http://A",
                     },
-                    {
-                        "Url": "http://B"
-                    },
-                    {
-                        "Language": [{"Code": "en-gb", "Country": "gb"}]
-                    }
-                ]
+                    {"Url": "http://B"},
+                    {"Language": [{"Code": "en-gb", "Country": "gb"}]},
+                ],
             },
             {
                 "DocId": 20,
-                "Links": {
-                    "Backward": [10, 30],
-                    "Forward": [80]
-                },
-                "Name": [
-                    {"Url": "http://C"}
-                ]
-            }
+                "Links": {"Backward": [10, 30], "Forward": [80]},
+                "Name": [{"Url": "http://C"}],
+            },
         ]

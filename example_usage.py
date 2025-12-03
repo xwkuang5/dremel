@@ -1,6 +1,6 @@
+from assembly import assemble_records
 from schema import parse_schema
 from shred import shred_records
-from assembly import assemble_records
 
 # 1. Define Schema
 # The schema is defined as a list of paths.
@@ -13,7 +13,7 @@ records = [
     {
         "doc": {
             "title": "Dremel Paper",
-            "links": [{"url": "http://google.com"}, {"url": "http://cs.stanford.edu"}]
+            "links": [{"url": "http://google.com"}, {"url": "http://cs.stanford.edu"}],
         }
     },
     {
@@ -21,7 +21,7 @@ records = [
             "title": "Another Doc"
             # links is missing (optional)
         }
-    }
+    },
 ]
 
 # 3. Shred Records (Write to Columns)
