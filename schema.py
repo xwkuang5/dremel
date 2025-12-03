@@ -51,6 +51,17 @@ class ColumnDescriptor:
     def is_leaf(self):
         return len(self.children) == 0
 
+    @property
+    def full_path(self):
+        path = []
+        curr = self
+        while curr.parent:
+            path.append(curr.path)
+            curr = curr.parent
+        if curr.path != '$':
+            path.append(curr.path)
+        return ".".join(reversed(path))
+
     def full_repetition_level(self, repetition_level):
         """
         Returns the definition level of the field @repetition_level from root to this.

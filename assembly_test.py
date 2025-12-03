@@ -119,6 +119,48 @@ class TestAssembly(unittest.TestCase):
                              {"doc": {"title": "Another Doc",
                                       "links": []}}])
 
+    def test_debugging_assembler(self):
+        from assembly import TextColumnAssembler, StringBuilder
+
+        s = PaperSchema()
+        # Use a smaller subset of records to keep the trace readable
+        records = [{
+            "DocId": 10,
+            "Links": {"Forward": [20]}
+        }]
+        shredded = shred_records(s.root, records)
+
+        sb = StringBuilder()
+
+        def factory(desc):
+            return TextColumnAssembler(desc, sb)
+
+        assemble_records(s.root, shredded, assembler_factory=factory)
+
+        output = str(sb)
+        expected_output = """\
+  <begin DocId>
+    DocId=10
+  <end DocId>
+  <begin Links>
+    <begin Links.Backward>
+    <end Links.Backward>
+    <begin Links.Forward>
+      Links.Forward=20
+    <end Links.Forward>
+  <end Links>
+  <begin Name>
+    <begin Name.Language>
+      <begin Name.Language.Code>
+      <end Name.Language.Code>
+      <begin Name.Language.Country>
+      <end Name.Language.Country>
+    <end Name.Language>
+    <begin Name.Url>
+    <end Name.Url>
+  <end Name>"""
+        self.assertEqual(output, expected_output)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -1,3 +1,4 @@
+import abc
 import collections
 from fsm import make_fsm, END
 from schema import get_all_nodes, get_leaves, get_ancestors, common_ancestor
@@ -42,12 +43,40 @@ def _calculate_is_last_in_repetition(column_descriptor):
     return column_descriptor == last_child
 
 
-class ColumnAssembler:
+class StringBuilder:
+    def __init__(self):
+        self._lines = []
+
+    def append(self, text):
+        self._lines.append(text)
+
+    def __str__(self):
+        return "\n".join(self._lines)
+
+
+class ColumnAssembler(abc.ABC):
     def __init__(self, column_descriptor):
         self.column_descriptor = column_descriptor
+        self.column_name = column_descriptor.path
+
+    @abc.abstractmethod
+    def begin(self, assembler):
+        pass
+
+    @abc.abstractmethod
+    def add(self, value, assembler):
+        pass
+
+    @abc.abstractmethod
+    def end(self, assembler):
+        pass
+
+
+class JsonColumnAssembler(ColumnAssembler):
+    def __init__(self, column_descriptor):
+        super().__init__(column_descriptor)
         self.is_leaf = column_descriptor.is_leaf
         self.is_repeated = column_descriptor.is_repeated
-        self.column_name = column_descriptor.path
         self.is_first_in_repetition = _calculate_is_first_in_repetition(
             column_descriptor)
         self.is_last_in_repetition = _calculate_is_last_in_repetition(
@@ -102,6 +131,26 @@ class ColumnAssembler:
             assembler.buffer = self.last_buffer
 
         assembler.repeated_buffer = self.last_repeated_buffer
+
+
+class TextColumnAssembler(ColumnAssembler):
+    def __init__(self, column_descriptor, string_builder):
+        super().__init__(column_descriptor)
+        self.string_builder = string_builder
+        self.full_path = column_descriptor.full_path
+        self.indent_width = column_descriptor.max_definition_level * 2
+
+    def begin(self, assembler):
+        self.string_builder.append(
+            f"{'':>{self.indent_width}}<begin {self.full_path}>")
+
+    def add(self, value, assembler):
+        self.string_builder.append(
+            f"{'':>{self.indent_width + 2}}{self.full_path}={value}")
+
+    def end(self, assembler):
+        self.string_builder.append(
+            f"{'':>{self.indent_width}}<end {self.full_path}>")
 
 
 class Assembler:
@@ -182,13 +231,17 @@ def _assemble_record(
     return assembler.buffer
 
 
-def assemble_records(root_descriptor, column_data):
+def assemble_records(
+        root_descriptor,
+        column_data,
+        assembler_factory=JsonColumnAssembler):
     """
     Assembles records from columnar data using the Dremel assembly algorithm.
 
     Args:
         root_descriptor: The root ColumnDescriptor of the schema.
         column_data: A dictionary mapping ColumnDescriptor objects to lists of (value, r, d) tuples.
+        assembler_factory: A callable that takes a ColumnDescriptor and returns a ColumnAssembler.
 
     Returns:
         A list of assembled records (dicts).
@@ -202,7 +255,7 @@ def assemble_records(root_descriptor, column_data):
     descriptor_to_reader = {desc: ColumnReader(
         desc, column_data[desc]) for desc in leaf_descriptors}
 
-    descriptor_to_assembler = {desc: ColumnAssembler(
+    descriptor_to_assembler = {desc: assembler_factory(
         desc) for desc in all_descriptors}
 
     first_reader = descriptor_to_reader[leaf_descriptors[0]]
