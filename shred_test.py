@@ -120,6 +120,51 @@ class TestDremelShred(unittest.TestCase):
             (None, 0, 0)
         ])
 
+    def test_validation_repeated_field_must_be_list(self):
+        schema = parse_schema(["r[*]"])
+        records = [{"r": 1}]
+        with self.assertRaises(ValueError) as cm:
+            shred_records(schema, records)
+        self.assertEqual(
+            str(cm.exception),
+            "Field 'r' is repeated, expected list, found int: 1")
+
+    def test_validation_non_repeated_field_must_not_be_list(self):
+        schema = parse_schema(["nr"])
+        records = [{"nr": [1]}]
+        with self.assertRaises(ValueError) as cm:
+            shred_records(schema, records)
+        self.assertEqual(
+            str(cm.exception),
+            "Field 'nr' is not repeated, expected single value, found list: [1]")
+
+    def test_validation_non_leaf_must_be_dict(self):
+        schema = parse_schema(["g.f"])
+        records = [{"g": 1}]
+        with self.assertRaises(ValueError) as cm:
+            shred_records(schema, records)
+        self.assertEqual(
+            str(cm.exception),
+            "Field 'g' is a nested group, expected dict, found int: 1")
+
+    def test_validation_nested_repeated_must_be_list(self):
+        schema = parse_schema(["r[*].a"])
+        records = [{"r": {"a": 1}}]
+        with self.assertRaises(ValueError) as cm:
+            shred_records(schema, records)
+        self.assertEqual(
+            str(cm.exception),
+            "Field 'r' is repeated, expected list, found dict: {'a': 1}")
+
+    def test_validation_nested_leaf_must_not_be_list(self):
+        schema = parse_schema(["r[*].a"])
+        records = [{"r": [{"a": [1]}]}]
+        with self.assertRaises(ValueError) as cm:
+            shred_records(schema, records)
+        self.assertEqual(
+            str(cm.exception),
+            "Field 'a' is not repeated, expected single value, found list: [1]")
+
 
 if __name__ == "__main__":
     unittest.main()
