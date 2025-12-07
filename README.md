@@ -1,5 +1,7 @@
 # Dremel Demo
 
+You can play around with a demo here ([![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://is4mel7ushhrrrcfnpgxey.streamlit.app/))
+
 ## 1. Overview
 This project provides a Python reference implementation of the Dremel columnar storage algorithm, as described in the original Google paper ("Dremel: Interactive Analysis of Web-Scale Datasets").
 
