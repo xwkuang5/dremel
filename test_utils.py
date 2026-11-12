@@ -1,6 +1,12 @@
 from schema import ColumnDescriptor
 
 
+def _update_tree_levels(desc, level=0):
+    desc.tree_level = level
+    for child in desc.children.values():
+        _update_tree_levels(child, level + 1)
+
+
 def mk_desc(path, r, d, is_repeated=False, children=None):
     desc = ColumnDescriptor(
         path, parent=None, max_repetition_level=r, max_definition_level=d
@@ -10,6 +16,7 @@ def mk_desc(path, r, d, is_repeated=False, children=None):
         for child in children:
             desc.children[child.path] = child
             child.parent = desc
+    _update_tree_levels(desc, 0 if desc.parent is None else desc.parent.tree_level + 1)
     return desc
 
 

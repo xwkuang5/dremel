@@ -2,7 +2,7 @@ import unittest
 
 from fsm import END, make_fsm
 from paper_schema import PaperSchema
-from schema import parse_schema
+from schema import ColumnDescriptor, parse_schema
 from test_utils import get_desc
 
 
@@ -54,8 +54,8 @@ class TestFSM(unittest.TestCase):
     def test_column_selection(self):
         s = PaperSchema()
 
-        # Select DocId and Country
-        selection = [s.doc_id, s.name_language_country]
+        # Select DocId and Country (even if passed in reverse order, schema DFS order applies)
+        selection = [s.name_language_country, s.doc_id]
         fsm = make_fsm(s.root, selection=selection)
 
         self.assertEqual(
@@ -69,6 +69,39 @@ class TestFSM(unittest.TestCase):
                 },
             },
         )
+
+    def test_same_leaf_name_under_different_parents(self):
+        schema = parse_schema(["billing.name", "shipping.name"])
+        billing_name = get_desc(schema, "billing.name")
+        shipping_name = get_desc(schema, "shipping.name")
+
+        fsm = make_fsm(schema)
+        self.assertEqual(
+            fsm,
+            {
+                billing_name: {0: shipping_name},
+                shipping_name: {0: END},
+            },
+        )
+
+        fsm_projected = make_fsm(schema, selection=[billing_name])
+        self.assertEqual(fsm_projected, {billing_name: {0: END}})
+
+    def test_validation_errors(self):
+        with self.assertRaises(ValueError):
+            make_fsm(ColumnDescriptor("$"))
+
+        s = PaperSchema()
+        with self.assertRaises(ValueError):
+            make_fsm(s.root, selection=[])
+
+        other_schema = parse_schema(["other"])
+        other_leaf = get_desc(other_schema, "other")
+        with self.assertRaises(ValueError):
+            make_fsm(s.root, selection=[other_leaf])
+
+        with self.assertRaises(ValueError):
+            make_fsm(s.root, selection=[s.root.children["Links"]])
 
 
 if __name__ == "__main__":

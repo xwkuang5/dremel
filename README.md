@@ -7,11 +7,11 @@ This project provides a Python reference implementation of the Dremel columnar s
 
 It demonstrates the core concepts of:
 - **Record Shredding**: Decomposing nested and repeated records (JSON-like) into columnar data with Repetition and Definition levels.
-- **Record Assembly**: Reconstructing original records from columnar data using Finite State Machines (FSMs).
+- **Record Assembly**: Reconstructing original or projected records from columnar data using Finite State Machines (FSMs).
 
 The implementation includes:
 - `shred.py`: Logic for shredding records into columns.
-- `assembly.py`: Logic for assembling records from columns.
+- `assembly.py`: Logic for assembling records (including column projection) from columns.
 - `fsm.py`: Construction of the FSM used for efficient record assembly.
 - `schema.py`: Schema definition and parsing helpers.
 
@@ -49,17 +49,17 @@ records = [
 shredded_columns = shred_records(schema, records)
 
 # 4. Assemble Records (Read from Columns)
-# Reconstructs the records from the columnar data
+# Reconstructs the records from the columnar data (optionally pass selection=[...] to project columns)
 assembled_records = assemble_records(schema, shredded_columns)
 print(assembled_records)
 ```
 
 ## 3. Assumptions / Limitations
 - **In-Memory**: This is a demonstration implementation and operates entirely in memory. It is not intended for production-scale data processing.
-- **Schema Support**: Supports nested and repeated fields (groups) and primitive types (integers, strings). All fields are optional.
-- **Validation**: Assumes input records strictly conform to the provided schema.
+- **Schema Support**: `parse_schema` treats all parsed fields as optional or repeated (though `ColumnDescriptor` supports explicit `required` descriptors with `max_definition_level < tree_level`). Empty repeated lists (`[]`) and omitted repeated fields share the same representation, matching Protocol Buffers / Dremel semantics.
+- **Validation**: Validates input records against the provided schema structure.
 - **Performance**: Optimized for clarity and correctness over raw speed.
 
 ## 4. TODO
-- [ ] Support lossless encoding and decoding of empty sub-messages.
+- [x] Support lossless encoding and decoding of empty sub-messages.
 - [ ] Support lazy shredding of sparse records via writer versions (optimization for sparse data).

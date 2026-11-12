@@ -8,7 +8,7 @@ from streamlit_ace import st_ace
 from assembly import assemble_records
 from fsm import END, make_fsm
 from paper_schema import PaperSchema
-from schema import parse_schema
+from schema import get_leaves, parse_schema
 from shred import shred_records
 
 st.set_page_config(layout="wide", page_title="Dremel Visualization")
@@ -64,8 +64,6 @@ records_text = st_ace(
     auto_update=True,
 )
 
-# Update session state (optional, as widgets update it automatically
-
 try:
     # Parse Schema
     schema_paths = [line.strip() for line in schema_text.splitlines() if line.strip()]
@@ -77,90 +75,106 @@ try:
     # Shred Records
     shredded_data = shred_records(root_descriptor, records)
 
+    leaf_descriptors = list(get_leaves(root_descriptor))
+    all_paths = [d.full_path for d in leaf_descriptors]
+
+    selected_paths = st.sidebar.multiselect(
+        "Projected Columns (Assembly)",
+        options=all_paths,
+        default=all_paths,
+    )
+    selected_descriptors = [
+        d for d in leaf_descriptors if d.full_path in set(selected_paths)
+    ]
+
     # 1. Shredding Visualization
     st.header("Shredded Columns")
 
-    cols = st.columns(len(shredded_data))
-
-    # Sort by path for consistent display
     sorted_descriptors = sorted(shredded_data.keys(), key=lambda d: d.full_path)
 
-    shredded_df_data = []
+    if sorted_descriptors:
+        shredded_df_data = []
+        for desc in sorted_descriptors:
+            data = shredded_data[desc]
+            df = pd.DataFrame(data, columns=["Value", "R", "D"])
+            shredded_df_data.append({"Descriptor": desc, "Data": df})
 
-    for desc in sorted_descriptors:
-        data = shredded_data[desc]
-        # data is list of (value, r, d)
-
-        # Create a nice dataframe for display
-        df = pd.DataFrame(data, columns=["Value", "R", "D"])
-        shredded_df_data.append({"Descriptor": desc, "Data": df})
-
-    # Display in a grid or tabs
-    tabs = st.tabs([d.full_path for d in sorted_descriptors])
-    for i, tab in enumerate(tabs):
-        with tab:
-            st.subheader(f"Column: {sorted_descriptors[i].full_path}")
-            st.dataframe(shredded_df_data[i]["Data"], width="stretch")
+        tabs = st.tabs([d.full_path for d in sorted_descriptors])
+        for i, tab in enumerate(tabs):
+            with tab:
+                st.subheader(f"Column: {sorted_descriptors[i].full_path}")
+                st.dataframe(shredded_df_data[i]["Data"], width="stretch")
 
     # 2. FSM Visualization
     st.header("Assembly FSM")
-    fsm = make_fsm(root_descriptor)
+    if not selected_descriptors:
+        st.warning(
+            "Select at least one column in the sidebar to build the FSM and assemble records."
+        )
+    else:
+        selection_arg = (
+            selected_descriptors
+            if len(selected_descriptors) < len(leaf_descriptors)
+            else None
+        )
+        fsm = make_fsm(root_descriptor, selection=selection_arg)
 
-    dot = graphviz.Digraph()
-    dot.attr(rankdir="LR")
+        dot = graphviz.Digraph()
+        dot.attr(rankdir="LR")
 
-    # Add nodes
-    # We need to map descriptors to unique IDs for graphviz
-    desc_to_id = {desc: str(i) for i, desc in enumerate(sorted_descriptors)}
-    desc_to_id[END] = "END"
+        desc_to_id = {desc: str(i) for i, desc in enumerate(selected_descriptors)}
+        desc_to_id[END] = "END"
 
-    for desc in sorted_descriptors:
-        label = f"{desc.full_path}\n(Max R={desc.max_repetition_level})"
-        dot.node(desc_to_id[desc], label=label, shape="box")
+        for desc in selected_descriptors:
+            label = f"{desc.full_path}\n(Max R={desc.max_repetition_level})"
+            dot.node(desc_to_id[desc], label=label, shape="box")
 
-    dot.node("END", label="END", shape="doublecircle")
+        dot.node("END", label="END", shape="doublecircle")
 
-    # Add edges
-    for start_node, transitions in fsm.items():
-        if start_node not in desc_to_id:
-            continue  # Should be in sorted_descriptors
+        for start_node, transitions in fsm.items():
+            if start_node not in desc_to_id:
+                continue
 
-        start_id = desc_to_id[start_node]
+            start_id = desc_to_id[start_node]
 
-        # Group transitions by target to simplify graph
-        target_to_levels = {}
-        for level, target_node in transitions.items():
-            target_id = desc_to_id.get(target_node, "END")
-            if target_id not in target_to_levels:
-                target_to_levels[target_id] = []
-            target_to_levels[target_id].append(level)
+            target_to_levels = {}
+            for level, target_node in transitions.items():
+                target_id = desc_to_id.get(target_node, "END")
+                if target_id not in target_to_levels:
+                    target_to_levels[target_id] = []
+                target_to_levels[target_id].append(level)
 
-        for target_id, levels in target_to_levels.items():
-            levels_str = ",".join(map(str, sorted(levels)))
-            dot.edge(start_id, target_id, label=f"r={levels_str}")
+            for target_id, levels in target_to_levels.items():
+                levels_str = ",".join(map(str, sorted(levels)))
+                dot.edge(start_id, target_id, label=f"r={levels_str}")
 
-    st.graphviz_chart(dot)
+        st.graphviz_chart(dot)
 
-    # 3. Assembly Visualization
-    st.header("Reconstructed Records")
+        # 3. Assembly Visualization
+        st.header("Reconstructed Records")
 
-    st.info(
-        """Note: Reconstructed records may differ from input records because:
-- The schema only specifies a subset of fields in the input record.
-- The current implementation does not differentiate between unset (sub) records and empty (sub) records."""
-    )
+        st.info(
+            """Note: Reconstructed records may differ from input records when:
+- Only a subset of fields is defined in the schema or selected for column projection.
+- An input repeated field is an empty list `[]` (which has 0 occurrences in Dremel's data model, identical to an omitted repeated field)."""
+        )
 
-    assembled_records = assemble_records(root_descriptor, shredded_data)
+        if selection_arg is not None:
+            assembled_records = assemble_records(
+                root_descriptor, shredded_data, selection=selection_arg
+            )
+        else:
+            assembled_records = assemble_records(root_descriptor, shredded_data)
 
-    col1, col2 = st.columns(2)
+        col1, col2 = st.columns(2)
 
-    with col1:
-        st.subheader("Input Records")
-        st.json(records)
+        with col1:
+            st.subheader("Input Records")
+            st.json(records)
 
-    with col2:
-        st.subheader("Assembled Records")
-        st.json(assembled_records)
+        with col2:
+            st.subheader("Assembled Records")
+            st.json(assembled_records)
 
 except Exception as e:
     st.error(f"Error: {e}")

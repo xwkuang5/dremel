@@ -1,9 +1,9 @@
 import unittest
 
 from paper_schema import PaperSchema
-from schema import parse_schema
+from schema import ColumnDescriptor, parse_schema
 from shred import shred_records
-from test_utils import get_desc
+from test_utils import get_desc, mk_desc
 
 
 class TestDremelShred(unittest.TestCase):
@@ -64,6 +64,12 @@ class TestDremelShred(unittest.TestCase):
         result = shred_records(schema, records)
         self.assertEqual(result[get_desc(schema, "a.b[*].c")], [(None, 0, 1)])
 
+    def test_repeated_field_none_treated_as_missing(self):
+        schema = parse_schema(["a.b[*]"])
+        records = [{"a": {"b": None}}]
+        result = shred_records(schema, records)
+        self.assertEqual(result[get_desc(schema, "a.b[*]")], [(None, 0, 1)])
+
     def test_list_with_missing_field(self):
         schema = parse_schema(["a.b[*].c"])
         records = [{"a": {"b": [{"c": 1}, {}]}}]
@@ -89,6 +95,14 @@ class TestDremelShred(unittest.TestCase):
             result[get_desc(schema, "doc.links[*].backward")],
             [(10, 0, 3), (None, 1, 2), (30, 0, 3)],
         )
+
+    def test_same_leaf_name_under_different_parents(self):
+        schema = parse_schema(["billing.name", "shipping.name"])
+        records = [{"billing": {"name": "Alice"}, "shipping": {"name": "Bob"}}]
+        result = shred_records(schema, records)
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result[get_desc(schema, "billing.name")], [("Alice", 0, 2)])
+        self.assertEqual(result[get_desc(schema, "shipping.name")], [("Bob", 0, 2)])
 
     def test_shred_repeated_leaf_topLevel(self):
         schema = parse_schema(["values[*]"])
@@ -118,6 +132,23 @@ class TestDremelShred(unittest.TestCase):
             [("m1", 0, 2), ("m2", 0, 2), (None, 0, 1), (None, 0, 0)],
         )
 
+    def test_validation_empty_schema_rejected(self):
+        empty_root = ColumnDescriptor("$")
+        with self.assertRaises(ValueError):
+            shred_records(empty_root, [{}])
+
+    def test_validation_records_must_be_list(self):
+        schema = parse_schema(["a"])
+        with self.assertRaises(ValueError) as cm:
+            shred_records(schema, {"a": 1})
+        self.assertIn("Expected list of records", str(cm.exception))
+
+    def test_validation_top_level_record_must_be_dict(self):
+        schema = parse_schema(["a"])
+        with self.assertRaises(ValueError) as cm:
+            shred_records(schema, [123])
+        self.assertIn("Expected dict for record", str(cm.exception))
+
     def test_validation_repeated_field_must_be_list(self):
         schema = parse_schema(["r[*]"])
         records = [{"r": 1}]
@@ -125,6 +156,31 @@ class TestDremelShred(unittest.TestCase):
             shred_records(schema, records)
         self.assertEqual(
             str(cm.exception), "Field 'r' is repeated, expected list, found int: 1"
+        )
+
+    def test_validation_repeated_primitive_cannot_contain_none(self):
+        schema = parse_schema(["r[*]"])
+        records = [{"r": [1, None, 2]}]
+        with self.assertRaises(ValueError) as cm:
+            shred_records(schema, records)
+        self.assertEqual(
+            str(cm.exception), "Repeated field 'r' cannot contain None values"
+        )
+
+    def test_validation_repeated_primitive_cannot_contain_containers(self):
+        schema = parse_schema(["r[*]"])
+        with self.assertRaises(ValueError):
+            shred_records(schema, [{"r": [[1]]}])
+        with self.assertRaises(ValueError):
+            shred_records(schema, [{"r": [{"x": 1}]}])
+
+    def test_validation_repeated_group_elements_must_be_dict(self):
+        schema = parse_schema(["a[*].b"])
+        with self.assertRaises(ValueError) as cm:
+            shred_records(schema, [{"a": [123]}])
+        self.assertEqual(
+            str(cm.exception),
+            "Field 'a' is a repeated group, expected dict elements, found int: 123",
         )
 
     def test_validation_non_repeated_field_must_not_be_list(self):
@@ -135,6 +191,16 @@ class TestDremelShred(unittest.TestCase):
         self.assertEqual(
             str(cm.exception),
             "Field 'nr' is not repeated, expected single value, found list: [1]",
+        )
+
+    def test_validation_primitive_leaf_must_not_be_dict(self):
+        schema = parse_schema(["nr"])
+        records = [{"nr": {"x": 1}}]
+        with self.assertRaises(ValueError) as cm:
+            shred_records(schema, records)
+        self.assertEqual(
+            str(cm.exception),
+            "Field 'nr' is a primitive leaf, expected scalar value, found dict: {'x': 1}",
         )
 
     def test_validation_non_leaf_must_be_dict(self):
@@ -166,6 +232,68 @@ class TestDremelShred(unittest.TestCase):
             str(cm.exception),
             "Field 'a' is not repeated, expected single value, found list: [1]",
         )
+
+    def test_exact_figure_2_paper_schema_with_required_fields(self):
+        # Exact unmodified schema from Figure 2 of the Dremel paper:
+        # DocId is required (d=0), Name.Language.Code is required (d=2).
+        doc_id = mk_desc("DocId", 0, 0)
+        links_backward = mk_desc("Backward", 1, 2, is_repeated=True)
+        links_forward = mk_desc("Forward", 1, 2, is_repeated=True)
+        code = mk_desc("Code", 2, 2)
+        country = mk_desc("Country", 2, 3)
+        url = mk_desc("Url", 1, 2)
+
+        links = mk_desc("Links", 0, 1, children=[links_backward, links_forward])
+        language = mk_desc("Language", 2, 2, is_repeated=True, children=[code, country])
+        name = mk_desc("Name", 1, 1, is_repeated=True, children=[language, url])
+        root = mk_desc("$", 0, 0, children=[doc_id, links, name])
+
+        records = PaperSchema().records
+        result = shred_records(root, records)
+
+        # Matches Figure 3 of the Dremel paper exactly
+        self.assertEqual(result[doc_id], [(10, 0, 0), (20, 0, 0)])
+        self.assertEqual(result[links_backward], [(None, 0, 1), (10, 0, 2), (30, 1, 2)])
+        self.assertEqual(
+            result[links_forward], [(20, 0, 2), (40, 1, 2), (60, 1, 2), (80, 0, 2)]
+        )
+        self.assertEqual(
+            result[code],
+            [
+                ("en-us", 0, 2),
+                ("en", 2, 2),
+                (None, 1, 1),
+                ("en-gb", 1, 2),
+                (None, 0, 1),
+            ],
+        )
+        self.assertEqual(
+            result[country],
+            [
+                ("us", 0, 3),
+                (None, 2, 2),
+                (None, 1, 1),
+                ("gb", 1, 3),
+                (None, 0, 1),
+            ],
+        )
+        self.assertEqual(
+            result[url],
+            [("http://A", 0, 2), ("http://B", 1, 2), (None, 1, 1), ("http://C", 0, 2)],
+        )
+
+        # Verify lossless round-trip assembly with required fields
+        from assembly import assemble_records
+
+        self.assertEqual(assemble_records(root, result), records)
+
+        # Missing or None required fields raise ValueError
+        with self.assertRaises(ValueError):
+            shred_records(root, [{}])
+        with self.assertRaises(ValueError):
+            shred_records(root, [{"DocId": None}])
+        with self.assertRaises(ValueError):
+            shred_records(root, [{"DocId": 10, "Name": [{"Language": [{}]}]}])
 
 
 if __name__ == "__main__":
