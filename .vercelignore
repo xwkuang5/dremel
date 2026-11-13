@@ -3,3 +3,11 @@ python/
 __pycache__/
 .pytest_cache/
 .ruff_cache/
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+.vercel/
+.streamlit/
+coverage/
+*.tsbuildinfo

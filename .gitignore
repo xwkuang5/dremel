@@ -115,3 +115,5 @@ coverage/
 .streamlit/
 python/.streamlit/
 
+.vercel
+.env*
