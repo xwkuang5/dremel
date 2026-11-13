@@ -1,65 +1,67 @@
 # Dremel Demo
 
-You can play around with a demo here ([![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://is4mel7ushhrrrcfnpgxey.streamlit.app/))
+Interactive reference implementation and visualization of Google's Dremel columnar storage algorithm (*"Dremel: Interactive Analysis of Web-Scale Datasets"*), covering **Record Shredding** (Repetition & Definition levels) and **Record Assembly** via Finite State Machines (FSMs).
 
-## 1. Overview
-This project provides a Python reference implementation of the Dremel columnar storage algorithm, as described in the original Google paper ("Dremel: Interactive Analysis of Web-Scale Datasets").
+## Repository Structure
 
-It demonstrates the core concepts of:
-- **Record Shredding**: Decomposing nested and repeated records (JSON-like) into columnar data with Repetition and Definition levels.
-- **Record Assembly**: Reconstructing original or projected records from columnar data using Finite State Machines (FSMs).
+- **`web/`** — Interactive React + TypeScript + Vite web app built for instant zero-latency execution in the browser and deployment on **Vercel**.
+- **`python/`** — Original Python reference implementation (`schema.py`, `shred.py`, `fsm.py`, `assembly.py`), Streamlit app (`app.py`), and `pytest` suite.
 
-The implementation includes:
-- `shred.py`: Logic for shredding records into columns.
-- `assembly.py`: Logic for assembling records (including column projection) from columns.
-- `fsm.py`: Construction of the FSM used for efficient record assembly.
-- `schema.py`: Schema definition and parsing helpers.
+## 1. Web App (`web/`) — Local Development & Vercel Deployment
 
-## 2. Example Usage
+### Run Locally
+```bash
+cd web
+npm install
+npm run dev
+```
 
+### Run Typecheck, Unit & UI Tests, and Production Build
+```bash
+cd web
+npm run typecheck
+npm test
+npm run build
+```
+
+### Deploy to Vercel
+This repository includes root [`vercel.json`](vercel.json) and [`web/vercel.json`](web/vercel.json) configurations:
+- **Vercel Git Integration**: Import this repository on Vercel with the default root directory (`.`) or set Root Directory to `web/` — both are preconfigured to build `web/dist` cleanly.
+- **Vercel CLI**:
+  ```bash
+  vercel
+  ```
+
+## 2. Python Reference Implementation (`python/`)
+
+### Run Tests & Linter
+```bash
+pytest
+ruff check python
+```
+
+### Run the Streamlit App
+```bash
+streamlit run python/app.py
+```
+
+### Python Example Usage
 ```python
 from schema import parse_schema
 from shred import shred_records
 from assembly import assemble_records
 
-# 1. Define Schema
-# The schema is defined as a list of paths.
-# [*] denotes a repeated field.
-schema_strings = ["doc.title", "doc.links[*].url"]
-schema = parse_schema(schema_strings)
-
-# 2. Input Records
+schema = parse_schema(["doc.title", "doc.links[*].url"])
 records = [
     {
         "doc": {
             "title": "Dremel Paper",
-            "links": [{"url": "http://google.com"}, {"url": "http://cs.stanford.edu"}]
+            "links": [{"url": "http://google.com"}, {"url": "http://cs.stanford.edu"}],
         }
     },
-    {
-        "doc": {
-            "title": "Another Doc"
-            # links is missing (optional)
-        }
-    }
+    {"doc": {"title": "Another Doc"}},
 ]
 
-# 3. Shred Records (Write to Columns)
-# Returns a dict mapping ColumnDescriptor -> list of (value, repetition_level, definition_level)
 shredded_columns = shred_records(schema, records)
-
-# 4. Assemble Records (Read from Columns)
-# Reconstructs the records from the columnar data (optionally pass selection=[...] to project columns)
 assembled_records = assemble_records(schema, shredded_columns)
-print(assembled_records)
 ```
-
-## 3. Assumptions / Limitations
-- **In-Memory**: This is a demonstration implementation and operates entirely in memory. It is not intended for production-scale data processing.
-- **Schema Support**: `parse_schema` treats all parsed fields as optional or repeated (though `ColumnDescriptor` supports explicit `required` descriptors with `max_definition_level < tree_level`). Empty repeated lists (`[]`) and omitted repeated fields share the same representation, matching Protocol Buffers / Dremel semantics.
-- **Validation**: Validates input records against the provided schema structure.
-- **Performance**: Optimized for clarity and correctness over raw speed.
-
-## 4. TODO
-- [x] Support lossless encoding and decoding of empty sub-messages.
-- [ ] Support lazy shredding of sparse records via writer versions (optimization for sparse data).

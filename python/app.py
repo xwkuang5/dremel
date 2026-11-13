@@ -1,15 +1,20 @@
 import json
+import sys
+from pathlib import Path
+
+_APP_DIR = str(Path(__file__).resolve().parent)
+if _APP_DIR not in sys.path:
+    sys.path.insert(0, _APP_DIR)
 
 import graphviz
 import pandas as pd
 import streamlit as st
-from streamlit_ace import st_ace
-
 from assembly import assemble_records
 from fsm import END, make_fsm
 from paper_schema import PaperSchema
 from schema import get_leaves, parse_schema
 from shred import shred_records
+from streamlit_ace import st_ace
 
 st.set_page_config(layout="wide", page_title="Dremel Visualization")
 

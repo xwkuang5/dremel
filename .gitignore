@@ -101,3 +101,17 @@ dmypy.json
 .idea/
 *.swp
 .DS_Store
+
+# Web / Node / Vercel
+node_modules/
+web/node_modules/
+dist/
+web/dist/
+.vercel/
+coverage/
+*.tsbuildinfo
+
+# Local Streamlit settings
+.streamlit/
+python/.streamlit/
+
