@@ -1,0 +1,179 @@
+{
+  "$schema": "Pattern fixture dry-run: maps file paths and bash commands to expected skill matches",
+  "fixtures": [
+    {
+      "description": "vercel.json triggers multiple skills (routing, deploy, cli, functions, services, daemons, schedules)",
+      "type": "path",
+      "input": "vercel.json",
+      "expectedSkills": ["routing-middleware", "deployments-cicd", "vercel-cli", "vercel-functions", "vercel-services", "daemons", "vercel-schedules"]
+    },
+    {
+      "description": "middleware.ts triggers routing-middleware and auth",
+      "type": "path",
+      "input": "middleware.ts",
+      "expectedSkills": ["routing-middleware", "auth"]
+    },
+    {
+      "description": ".env.local triggers env-vars",
+      "type": "path",
+      "input": ".env.local",
+      "expectedSkills": ["env-vars"]
+    },
+    {
+      "description": "app/api/chat/route.ts triggers ai-sdk, vercel-functions, and chat-sdk",
+      "type": "path",
+      "input": "app/api/chat/route.ts",
+      "expectedSkills": ["ai-sdk", "vercel-functions", "chat-sdk"]
+    },
+    {
+      "description": "components.json has no dedicated shadcn skill",
+      "type": "path",
+      "input": "components.json",
+      "expectedSkills": []
+    },
+    {
+      "description": "prisma/schema.prisma triggers vercel-storage and bootstrap",
+      "type": "path",
+      "input": "prisma/schema.prisma",
+      "expectedSkills": ["vercel-storage", "bootstrap"]
+    },
+    {
+      "description": ".github/workflows/deploy.yml path-matches deployments-cicd and vercel-agent, not workflow (the hook additionally requires a Vercel mention before injecting deployments-cicd)",
+      "type": "path",
+      "input": ".github/workflows/deploy.yml",
+      "expectedSkills": ["deployments-cicd", "vercel-agent"]
+    },
+    {
+      "description": "vercel deploy command triggers deployments-cicd and vercel-cli",
+      "type": "bash",
+      "input": "vercel deploy --prod",
+      "expectedSkills": ["deployments-cicd", "vercel-cli"]
+    },
+    {
+      "description": "npx shadcn add has no dedicated shadcn skill",
+      "type": "bash",
+      "input": "npx shadcn@latest add button",
+      "expectedSkills": []
+    },
+    {
+      "description": "next dev --turbo triggers verification",
+      "type": "bash",
+      "input": "next dev --turbo",
+      "expectedSkills": ["verification"]
+    },
+    {
+      "description": "vercel env pull triggers env-vars, ai-gateway, and vercel-cli",
+      "type": "bash",
+      "input": "vercel env pull .env.local",
+      "expectedSkills": ["env-vars", "ai-gateway", "vercel-cli"]
+    },
+    {
+      "description": "vercel env update triggers env-vars and vercel-cli",
+      "type": "bash",
+      "input": "vercel env update MY_SECRET production",
+      "expectedSkills": ["env-vars", "vercel-cli"]
+    },
+    {
+      "description": "vercel env run triggers env-vars and vercel-cli",
+      "type": "bash",
+      "input": "vercel env run -e preview -- npm test",
+      "expectedSkills": ["env-vars", "vercel-cli"]
+    },
+    {
+      "description": "src/components/Button.tsx triggers react-best-practices",
+      "type": "path",
+      "input": "src/components/Button.tsx",
+      "expectedSkills": ["react-best-practices"]
+    },
+    {
+      "description": "components/Card.jsx triggers react-best-practices",
+      "type": "path",
+      "input": "components/Card.jsx",
+      "expectedSkills": ["react-best-practices"]
+    },
+    {
+      "description": "app/components/Modal.tsx triggers react-best-practices",
+      "type": "path",
+      "input": "app/components/Modal.tsx",
+      "expectedSkills": ["react-best-practices"]
+    },
+    {
+      "description": "npm run dev triggers verification",
+      "type": "bash",
+      "input": "npm run dev",
+      "expectedSkills": ["verification"]
+    },
+    {
+      "description": "pnpm dev triggers verification",
+      "type": "bash",
+      "input": "pnpm dev",
+      "expectedSkills": ["verification"]
+    },
+    {
+      "description": "bun run dev triggers verification",
+      "type": "bash",
+      "input": "bun run dev",
+      "expectedSkills": ["verification"]
+    },
+    {
+      "description": "vite triggers verification",
+      "type": "bash",
+      "input": "vite",
+      "expectedSkills": ["verification"]
+    },
+    {
+      "description": "npm install prisma currently triggers no direct skill matches",
+      "type": "bash",
+      "input": "npm install prisma",
+      "expectedSkills": []
+    },
+    {
+      "description": "npm install langchain currently triggers no direct skill matches",
+      "type": "bash",
+      "input": "npm install langchain",
+      "expectedSkills": []
+    },
+    {
+      "description": "npm install @langchain/core currently triggers no direct skill matches",
+      "type": "bash",
+      "input": "npm install @langchain/core",
+      "expectedSkills": []
+    },
+    {
+      "description": "npm install @clerk/nextjs triggers auth",
+      "type": "bash",
+      "input": "npm install @clerk/nextjs",
+      "expectedSkills": ["auth"]
+    },
+    {
+      "description": "yarn add @clerk/nextjs triggers auth",
+      "type": "bash",
+      "input": "yarn add @clerk/nextjs",
+      "expectedSkills": ["auth"]
+    },
+    {
+      "description": "pnpm add prisma langchain currently triggers no direct skill matches",
+      "type": "bash",
+      "input": "pnpm add prisma langchain",
+      "expectedSkills": []
+    },
+    {
+      "description": "vercel ai-gateway budgets triggers ai-gateway and vercel-cli",
+      "type": "bash",
+      "input": "vercel ai-gateway budgets set team --amount 500 --refresh-period monthly",
+      "expectedSkills": ["ai-gateway", "vercel-cli"]
+    },
+    {
+      "description": "vercel ai-gateway coding-agents setup triggers ai-gateway and vercel-cli",
+      "type": "bash",
+      "input": "vercel ai-gateway coding-agents setup",
+      "expectedSkills": ["ai-gateway", "vercel-cli"]
+    },
+    {
+      "description": "pnpm add @ai-sdk/gateway triggers ai-gateway and ai-sdk",
+      "type": "bash",
+      "input": "pnpm add @ai-sdk/gateway",
+      "expectedSkills": ["ai-gateway", "ai-sdk"]
+    }
+  ]
+}
